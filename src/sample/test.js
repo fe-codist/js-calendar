@@ -20,4 +20,24 @@ define([
         });
     calendar.show();
 
+    $("#toggle").on("click",function(){
+        calendar.toggleMode();
+    });
+
+    $("#nextMonth").on("click",function(){
+        calendar.nextMonth();
+    });
+
+    $("#lastMonth").on("click",function(){
+        calendar.lastMonth();
+    });
+
+    $("#nextWeek").on("click",function(){
+        calendar.nextWeek();
+    });
+
+    $("#lastWeek").on("click",function(){
+        calendar.lastWeek();
+    });
+
 });
