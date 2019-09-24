@@ -9,12 +9,12 @@ define(["jquery", "./calculator"], function ($, Calculator) {
     function Calendar(opts) {
         this.params = {
             id: undefined,
-            mode: MODE_MONTH,
+            mode: MODE_WEEK,
             outMonthClickable: true,
             outMonthShowable: true,
             mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
             firstOfWeek: "",
-            firstOfWeekIndex: 0,
+            firstOfWeekIndex: 6,
             seedDate: new Date(),
             selectDate: new Date()
         };
@@ -77,22 +77,35 @@ define(["jquery", "./calculator"], function ($, Calculator) {
                                 )
                                 ||
                                 (
-                                    date.getMonth() === calendar.params.seedDate.getMonth()
+                                    date.getMonth() === calendar.calculator.getSeedDate().getMonth()
                                     &&
-                                    date.getFullYear() === calendar.params.seedDate.getFullYear()
+                                    date.getFullYear() === calendar.calculator.getSeedDate().getFullYear()
                                 )
                             )
                         ) || calendar.params.mode === MODE_WEEK);
                     if (isCanClick && calendar.onDateSelectedListeners) {
                         calendar.onDateSelectedListeners.forEach(listener => {
                             listener &&
-                                listener(new Date(date), new Date(calendar.params.selectDate));
+                                listener(calendar, new Date(date), new Date(calendar.params.selectDate));
                         });
                         calendar.params.selectDate = date;
                     }
                 });
             }
             calendar.elMatrix.push(row);
+
+            //默认添加一个toggle监听，切换toggle会触发
+            // calendar.onModeChangedListeners.push(function(mode,lastMode){
+            //     if(mode===MODE_MONTH){
+            //         calendar.onMonthChangedListeners.forEach(listener=>{
+            //             listener(calendar,new Date(calendar.calculator.getSeedDate()),new Date(calendar.calculator.getSeedDate()));
+            //         });
+            //     }else if(mode===MODE_WEEK){
+            //         calendar.onWeekChangedListeners.forEach(listener=>{
+            //             listener();
+            //         });
+            //     } 
+            // });
         }
     }
 
@@ -127,31 +140,33 @@ define(["jquery", "./calculator"], function ($, Calculator) {
         return this;
     };
 
-    Calendar.prototype.toggleMode = function (mode = undefined) {
+    Calendar.prototype.toggleMode = function (time = 1000, mode = undefined) {
         let lastMode = this.params.mode;
         if (!mode) {
             this.params.mode = (this.params.mode === MODE_WEEK ? MODE_MONTH : MODE_WEEK);
-            this.params.mode === MODE_MONTH && expend(this);
-            this.params.mode === MODE_WEEK && shrink(this);
+            this.params.mode === MODE_MONTH && expend(this, time);
+            this.params.mode === MODE_WEEK && shrink(this, time);
         } else if (mode === MODE_WEEK) {
             this.params.mode = MODE_WEEK;
-            shrink(this);
+            shrink(this, time);
         } else if (mode === MODE_MONTH) {
             this.params.mode = MODE_MONTH;
-            expend(this);
+            expend(this, time);
         }
         this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
             listener(this.params.mode, lastMode);
         });
     };
 
-    function expend(calendar) {
-        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(1000);
+    function expend(calendar, time) {
+        calendar.show(calendar.calculator.getMonthMatrix());
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
     }
 
-    function shrink(calendar) {
-        let row = getRowByDate(calendar.calculator.getMonthMatrix,calendar.params.selectDate);
-        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideDown(1000);
+    function shrink(calendar, time) {
+        let row = getRowByDate(calendar.calculator.getMonthMatrix(), calendar.params.selectDate);
+        calendar.show(calendar.calculator.getMonthMatrix());
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
     }
 
     function getRowByDate(monthMatrix, date) {
@@ -191,7 +206,6 @@ define(["jquery", "./calculator"], function ($, Calculator) {
         } else {
             return undefined;
         }
-
     }
 
     Calendar.prototype.nextMonth = function () {
@@ -203,7 +217,10 @@ define(["jquery", "./calculator"], function ($, Calculator) {
     };
 
     function switchMonth(calendar, functionName) {
-        let lastMonthSeed = new Date(calendar.params.seedDate);
+        if (calendar.params.mode === MODE_WEEK) {
+            return;
+        }
+        let lastMonthSeed = new Date(calendar.calculator.getSeedDate());
         calendar.calculator[functionName]();
         calendar.show(calendar.calculator.getMonthMatrix());
         calendar.onMonthChangedListeners && calendar.onMonthChangedListeners.forEach(listener => {
@@ -212,14 +229,30 @@ define(["jquery", "./calculator"], function ($, Calculator) {
     }
 
     Calendar.prototype.nextWeek = function () {
-        this.calculator.nextWeek();
-        this.show(this.calculator.getMonthMatrix());
+        switchWeek(this, "nextWeek");
     };
 
     Calendar.prototype.lastWeek = function () {
-        this.calculator.lastWeek();
-        this.show(this.calculator.getMonthMatrix());
+        switchWeek(this, "lastWeek");
     };
+
+    function switchWeek(calendar, functionName) {
+        if (calendar.params.mode === MODE_MONTH) {
+            return;
+        }
+        let lastSeed = new Date(calendar.calculator.getSeedDate());
+        calendar.calculator[functionName]();
+        calendar.show(calendar.calculator.getMonthMatrix());
+        //找到显示行
+        let row = calendar.calculator.getMonthMatrix().indexOf(calendar.calculator.getWeekMatrix());
+        //显示目标行
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideUp(0);
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}:nth(${row})`).slideDown(0);
+        //隐藏其他行
+        calendar.onWeekChangedListeners && calendar.onWeekChangedListeners.forEach(listener => {
+            listener(calendar, new Date(calendar.calculator.getSeedDate()), lastSeed);
+        });
+    }
 
     Calendar.prototype.show = function (monthMatrix = undefined) {
         let enterParamIsNull = !monthMatrix;
@@ -245,16 +278,16 @@ define(["jquery", "./calculator"], function ($, Calculator) {
                             this.params.outMonthShowable
                             ||
                             (
-                                date.getMonth() === this.params.seedDate.getMonth()
+                                date.getMonth() === this.calculator.getSeedDate().getMonth()
                                 &&
-                                this.params.seedDate.getFullYear() === date.getFullYear()
+                                date.getFullYear() === this.calculator.getSeedDate().getFullYear()
                             )
                         )
                     )
                     ||
                     this.params.mode === MODE_WEEK
                 );
-                this.drawItemListener && this.drawItemListener($el, date);//绘制item
+                this.drawItemListener && this.drawItemListener(this, $el, date);//绘制item
                 !isNeedDrawItem && $el.html("");//不需要显示的把内容置空，多这一步是为了drawItemListener把样式设置上
             }
         }
@@ -263,157 +296,14 @@ define(["jquery", "./calculator"], function ($, Calculator) {
                 listener(this, new Date(this.calculator.getSeedDate()), new Date(this.calculator.getSeedDate()));
             });
             this.params.mode === MODE_WEEK && this.onWeekChangedListeners && this.onWeekChangedListeners.forEach(listener => {
-                listener(this);
+                listener(this, new Date(this.calculator.getSeedDate()), new Date(this.calculator.getSeedDate()));
             });
             this.params.selectDate && this.onDateSelectedListeners && this.onDateSelectedListeners.forEach(listener => {
-                listener(this.params.selectDate, this.params.selectDate);
+                listener(this, this.params.selectDate, this.params.selectDate);
             });
+            this.toggleMode(0, this.params.mode);
         }
     };
-
-    //*************************************************************************************************/
-    function test() {
-        let c = new Calendar({
-            id: undefined,
-            mode: "week",
-            outMonthClickable: false,
-            outMonthShowable: false,
-            mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
-            firstOfWeek: "",
-            firstOfWeekIndex: 0,
-            seedDate: new Date(),
-            selectDate: new Date()
-        })
-            .setDrawItem(function (el, date) { })
-            .addOnMonthChangedListener(function (
-                calendarMatrix,
-                currentSeed,
-                lastSeed
-            ) {
-                //重刷标题
-                //重刷日历面板
-                //业务逻辑：获取数据，将获取结果
-                request(month).then(res => {
-                    if (requestDate === calendarMatrix.date) {
-                        res.data.each(date => {
-                            $(calendarMatrix.getElementByDate(date))
-                                .find(".day")
-                                .html("<div>有消息</div>");
-                        });
-                    }
-                });
-            })
-            .addOnWeekChangedListener(function (calculator, currentSeed, lastSeed) {
-                //重刷标题
-                //重刷日历面板
-                //业务逻辑：获取数据，将获取结果
-            })
-            .addOnDateSelectedListener(function (selectDate, lastDate) {
-                //公有逻辑
-                // this.params.selectDate = selectDate;
-
-                //业务逻辑
-                request().then(res => {
-                    if (requestDate === calendar.params.selectDate) {
-                        //处理逻辑
-                    }
-                });
-            })
-            .addOnModeChangedListener(function (isMonth) { })
-            .show(id);
-        c.toggleMode();
-        c.nextMonth();
-        c.lastMonth();
-        c.lastWeek();
-        c.nextWeek();
-
-        new Calendar()
-            .setMode(MODE_WEEK)
-            .setOutMonthClickable(false)
-            .setOutMonthShowable(false)
-            .setMondayToSunday([
-                "周一",
-                "周二",
-                "周三",
-                "周四",
-                "周五",
-                "周六",
-                "周日"
-            ])
-            .setFirstOfWeek("周一") //与下2选1
-            .setFirstOfWeekIndex(0) //与上2选1
-            .addOnDateRangeChangedListener(function (calendarMatrix) {
-                //计算
-
-                //重刷标题
-
-                //重刷日历面板
-
-                //业务逻辑：获取数据，将获取结果
-                //月模式
-                cache
-                    ? cache
-                    : requestCalendar().then(res => {
-                        if (requestDate === calendarMatrix.date) {
-                            //请求日期等于日历当前展示
-                            res.data.each(date => {
-                                $(calendarMatrix.getElementByDate(date))
-                                    .find(".day")
-                                    .html("<div>有消息</div>");
-                            });
-                        }
-                    });
-                //周模式
-                cache
-                    ? cache
-                    : requestCalendar().then(res => {
-                        if (requestDate === calendarMatrix.date) {
-                            //请求日期等于日历当前展示
-                            res.data.each(date => {
-                                $(calendarMatrix.getElementByDate(date))
-                                    .find(".day")
-                                    .html("<div>有消息</div>");
-                            });
-                        }
-                    });
-            })
-            .addOnWeekChangedListener(function () { })
-            .addOnMonthChangeListener(function (
-                calendarMatrix,
-                currentSeedDate,
-                lastSeedDate
-            ) {
-                //计算
-                //重刷标题
-                //重刷日历面板
-                //更新选中状态
-                //业务逻辑：获取数据，将获取结果
-            })
-            .addOnDateSelectedListener(function (
-                calendarMatrix,
-                currentDate,
-                lastDate
-            ) {
-                $(calendarMatrix.getElementByDate(currentDate)).css();
-                $(calendarMatrix.getElementByDate(lastDate)).css();
-            })
-
-            .addTitleAction(id, howShowTitle)
-            .removeTitleAction(id)
-            .addLastAction(id, haoLast)
-            .removeLastAction(id)
-            .addNextAction(id, howNext)
-            .removeNextAction(id)
-
-            .addModeToggleAction(id, howToggle)
-            .removeModeToggleAction(id)
-
-            .addWeekBarAction(id, function () { })
-            .removeWeekBarAction(id)
-
-            .setCalendar(id, function (calendarMatrix) { })
-            .show();
-    }
 
     return Calendar;
 });
