@@ -16,7 +16,15 @@ define([
             });
         })
         .addOnDateSelectedListener(function (date, lastDate) {
-            alert(lastDate);
+            alert(date.getDate());
+        })
+        .addOnMonthChangedListener(function(calendar,seedDate,lastSeedDate){
+            let month = seedDate.getMonth();
+            let el = calendar.getElementByDate(new Date(seedDate.getFullYear(),month,month+1));
+            el && el.append("<span>_</span>");
+        })
+        .addOnWeekChangedListener(function(){
+
         });
     calendar.show();
 
