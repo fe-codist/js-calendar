@@ -108,21 +108,21 @@ define(["jquery", "./calculator"], function ($, Calculator) {
             calendar.onDateSelectedListeners.push(function (calendar, seedDate, lastDate) {
                 drawTitle(calendar, seedDate);
             });
-            calendar.onModeChangedListeners.push(function(mode,lastMode){
-                if(mode===MODE_MONTH){
-                    calendar.onMonthChangedListeners.forEach(listener=>{
-                        listener(calendar,new Date(calendar.calculator.getSeedDate()),new Date(calendar.calculator.getSeedDate()));
+            calendar.onModeChangedListeners.push(function (mode, lastMode) {
+                if (mode === MODE_MONTH) {
+                    calendar.onMonthChangedListeners.forEach(listener => {
+                        listener(calendar, new Date(calendar.calculator.getSeedDate()), new Date(calendar.calculator.getSeedDate()));
                     });
-                }else{
-                    calendar.onWeekChangedListeners.forEach(listener=>{
-                        listener(calendar,new Date(calendar.calculator.getSeedDate()),new Date(calendar.calculator.getSeedDate()));
+                } else {
+                    calendar.onWeekChangedListeners.forEach(listener => {
+                        listener(calendar, new Date(calendar.calculator.getSeedDate()), new Date(calendar.calculator.getSeedDate()));
                     });
                 }
             });
 
-            calendar.onModeChangedListeners.push(function(mode,lastMode){
-                if(mode===MODE_MONTH){
-                    
+            calendar.onModeChangedListeners.push(function (mode, lastMode) {
+                if (mode === MODE_MONTH) {
+
                 }
             });
         }
@@ -132,12 +132,12 @@ define(["jquery", "./calculator"], function ($, Calculator) {
         this.config = config;
 
         return;
-    };
+    }
 
     Calendar.prototype.setDrawItemListener = function (listener) {
         this.drawItemListener = listener;
         return this;
-    };
+    }
 
     Calendar.prototype.setDrawTitleListener = function (listener) {
         this.drawTitleListener = listener;
@@ -183,19 +183,42 @@ define(["jquery", "./calculator"], function ($, Calculator) {
     };
 
     function expend(calendar, time) {
-        calendar.show(calendar.calculator.getMonthMatrix());
+        let row = getRowByDate(calendar.calculator.getMonthMatrix(), calendar.params.selectDate);
+        //在面板内
+        if (row !== -1) {
+            //同月
+            if (calendar.calculator.getSeedDate().getMonth() === calendar.params.selectDate.getMonth()) {
+
+            } else {//不同月
+                calendar.calculator.calculate();
+            }
+            calendar.show(calendar.calculator.getMonthMatrix());
+        } else {
+
+        }
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
     }
 
     function shrink(calendar, time) {
         let row = getRowByDate(calendar.calculator.getMonthMatrix(), calendar.params.selectDate);
-        calendar.calculator.setSeedDate(new Date(calendar.params.selectDate));
+        if (row === -1) {//不在当前面板内
+            row = 0;
+        } else if (row === 0) {
+            calendar.params.seedDate = new Date(calendar.calculator.getSeedDate());
+            calendar.calculator.setSeedDate(new Date(calendar.params.selectDate));
+        }
         calendar.show(calendar.calculator.getMonthMatrix());
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
+
+        // let row = getRowByDate(calendar.calculator.getMonthMatrix(), calendar.params.selectDate);
+        // row === -1 && (row = 0);
+        // calendar.show(calendar.calculator.calculate().getMonthMatrix());
+        // $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
+
     }
 
     function getRowByDate(monthMatrix, date) {
-        let row = 0;
+        let row = -1;
         if (!date || !(date instanceof Date)) {
             return row;
         }

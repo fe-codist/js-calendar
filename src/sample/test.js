@@ -39,9 +39,10 @@ define([
             //绘制选中
             if (date.getDate() === calendar.params.selectDate.getDate()
                 && date.getMonth() === calendar.params.selectDate.getMonth()
-                && date.getFullYear() === calendar.params.selectDate.getFullYear()
-                && calendar.params.selectDate.getMonth() === calendar.calculator.getSeedDate().getMonth()) {
-                calendar.getElementByDate(date).find(">span").addClass("select");
+                && date.getFullYear() === calendar.params.selectDate.getFullYear()) {
+                    if((calendar.params.mode === "month" && calendar.params.selectDate.getMonth() === calendar.calculator.getSeedDate().getMonth())||(calendar.params.mode === "week")){
+                        calendar.getElementByDate(date).find(">span").addClass("select");
+                    }
             }
         })
         .addOnDateSelectedListener(function (calendar, date, lastDate) {
