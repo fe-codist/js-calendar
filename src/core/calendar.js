@@ -10,7 +10,7 @@ define(["jquery"], function ($, Calculator) {
         this.monthMatrix = [];
         this.params = {
             id: undefined,
-            mode: MODE_WEEK,
+            mode: MODE_MONTH,
             outMonthClickable: false,
             outMonthShowable: true,
             mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
@@ -28,6 +28,142 @@ define(["jquery"], function ($, Calculator) {
         this.onModeChangedListeners = [];
         this.onDrawItemListener = undefined;
 
+        //初始化
+        if (!this.params.id) {
+            return;
+        }
+
+        this.init();
+    }
+
+    Calendar.prototype.init = function () {
+        //初始化日期矩阵
+        this.calculate()
+        //初始化elhtml
+        calendarHtml(this.params.id);
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).each((row, $row) => {
+            let rows = [];
+            $($row).find(">span").each((column, $el) => {
+                rows.push($($el));
+            });
+            this.elMatrix.push(rows);
+        });
+        //添加监听
+        addClickListener(this, this.onDateSelectedListeners);
+
+    }
+
+    Calendar.prototype.calculate = function () {
+        this.monthMatrix = calcMonthMatrix(this.getSeedDate(), this.params.firstOfWeekIndex);
+        return this;
+    }
+
+    Calendar.prototype.setDrawItemListener = function (listener) {
+        this.onDrawItemListener = listener;
+        return this;
+    }
+
+    Calendar.prototype.addOnDateSelectedListener = function (listener) {
+        this.onDateSelectedListeners.push(listener);
+        return this;
+    }
+
+    Calendar.prototype.addOnMonthChangedListener = function (listener) {
+        this.onMonthChangedListeners.push(listener);
+        return this;
+    }
+
+    Calendar.prototype.addOnWeekChangedListener = function (listener) {
+        this.onWeekChangedListeners.push(listener);
+        return this;
+    }
+
+    Calendar.prototype.show = function (monthMatrix) {
+        draw(this, this.elMatrix, monthMatrix || this.monthMatrix, this.onDrawItemListener);
+    }
+
+    Calendar.prototype.getSeedDate = function () {
+        return this.params.seedDate;
+    }
+
+    Calendar.prototype.getSelectDate = function () {
+        return this.params.selectDate;
+    }
+
+    Calendar.prototype.isMonthMode = function () {
+        return this.params.mode === MODE_MONTH;
+    }
+
+    Calendar.prototype.toggleMode = function () {
+        this.params.mode === MODE_WEEK ? this.monthMode() : this.weekMode();
+    }
+
+    Calendar.prototype.weekMode = function () {
+        this.params.mode = MODE_WEEK;
+        //logic
+
+    }
+
+    Calendar.prototype.monthMode = function () {
+        this.params.mode = MODE_MONTH;
+        //logic
+    }
+
+    Calendar.prototype.nextMonth = function () {
+        this.switchMonth(() => {
+            this.params.seedDate.setMonth(this.params.seedDate.getMonth() + 1);
+        });
+    }
+
+    Calendar.prototype.lastMonth = function () {
+        this.switchMonth(() => {
+            this.params.seedDate.setMonth(this.params.seedDate.getMonth() - 1);
+        });
+    }
+
+    Calendar.prototype.switchMonth = function (calcuSeed) {
+        //计算种子
+        calcuSeed && calcuSeed();
+        //计算矩阵
+        this.calculate();
+        //绘制图形
+        this.draw();
+        //回调监听
+        this.onMonthChangedListeners.forEach(listener => {
+            listener(this, new Date(this.params.seedDate));
+        });
+    }
+
+    Calendar.prototype.nextWeek = function () {
+
+    }
+
+    Calendar.prototype.lastWeek = function () {
+
+    }
+
+    Calendar.prototype.getElementByDate = function (date) {
+        let rs = this.monthMatrix.flat().map((day, index) => {
+            return {
+                date: day,
+                index: index
+            }
+        }).filter(ele => {
+            let day = ele.date;
+            return day.getDate() === date.getDate()
+                && day.getMonth() === date.getMonth()
+                && day.getFullYear() === date.getFullYear();
+        });
+        if (rs && rs.length > 0) {
+            let index = rs[0]["index"];
+            return this.elMatrix[parseInt(index / 7)][index % 7];
+        } else {
+            return undefined;
+        }
+    }
+
+    Calendar.prototype.draw = function (monthMatrix) {
+        draw(this, this.elMatrix, monthMatrix || this.monthMatrix, this.onDrawItemListener);
     }
 
     function calendarHtml(id) {
@@ -52,40 +188,35 @@ define(["jquery"], function ($, Calculator) {
         $(`#${id}`).html(calendar);
     }
 
-    function addClickListener(calendar, elMatrix, monthMatrix, listeners) {
-        let opts = calendar.params;
-        let seedDate = opts.seedDate;
-        let selectDate = opts.selectDate;
-        let isMonthMode = opts.mode === MODE_MONTH;
-        let outMonthShowable = opts.outMonthShowable;
-        let outMonthClickable = opts.outMonthClickable;
-        elMatrix.forEach(($row, row) => {
+    function addClickListener(calendar, listeners) {
+        calendar.elMatrix.forEach(($row, row) => {
             $row.forEach(($el, column) => {
                 $el.on("click", function () {
-                    let date = monthMatrix[row][column];
+                    let date = calendar.monthMatrix[row][column];
                     let isCanClick = (
                         (
-                            isMonthMode
+                            calendar.isMonthMode()
                             &&
                             (
                                 (
-                                    outMonthShowable && outMonthClickable
+                                    calendar.params.outMonthShowable && calendar.params.outMonthClickable
                                 )
                                 ||
                                 (
-                                    date.getMonth() === seedDate.getMonth()
+                                    date.getMonth() === calendar.params.seedDate.getMonth()
                                     &&
-                                    date.getFullYear() === seedDate.getFullYear()
+                                    date.getFullYear() === calendar.params.seedDate.getFullYear()
                                 )
                             )
                         ) || calendar.params.mode === MODE_WEEK);
                     if (isCanClick && listeners) {
                         listeners.forEach(listener => {
                             listener &&
-                                listener(new Date(date), new Date(selectDate));
+                                listener(calendar, new Date(date), new Date(calendar.params.selectDate));
                         });
                         calendar.params.selectDate = new Date(date);
-                        calendar.calculator.setSeedDate(new Date(date)).calculate();
+                        //重刷界面
+                        calendar.show();
                     }
                 });
             });
@@ -117,7 +248,7 @@ define(["jquery"], function ($, Calculator) {
                     ||
                     !isMonthMode
                 );
-                onDrawItemListener && onDrawItemListener($el, date);
+                onDrawItemListener && onDrawItemListener(calendar, $el, date);
                 !isNeedDrawItem && $el.html("");//不需要显示的把内容置空，多这一步是为了drawItemListener把样式设置上
             });
         });
@@ -163,6 +294,7 @@ define(["jquery"], function ($, Calculator) {
                 //获取当月一号是第几列
                 return weekDay["dayOfWeek"] === (firstDayOfMonth.getDay() || 7) - 1;
             })[0]["column"];
+
         //3.获取上个月面板[5][6]位置的日期
         firstDayOfMonth.setDate(firstDayOfMonth.getDate() - firstDayColumn - 1);
         //4.推算出6*7矩阵所有位置的日期
