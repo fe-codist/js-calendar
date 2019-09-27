@@ -106,7 +106,7 @@ define([
     calendar.show();
 
     $("#toggle").on("click", function () {
-        calendar.toggleMode();
+        calendar.toggleMode(1000);
     });
 
     $("#nextMonth").on("click", function () {

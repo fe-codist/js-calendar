@@ -9,9 +9,6 @@ define([
         outMonthShowable: true,
     })
         .setDrawItemListener(function (calendar, $el, date) {
-            $el.closest("div").css({
-                "display": "flex",
-            });
             //刷新
             $el.css({
                 "flex": "1",
@@ -31,7 +28,6 @@ define([
             `);
             $el.find(">span").removeClass("select");
             let seed = calendar.getSeedDate();
-            console.log(calendar.isMonthMode());
             if (seed.getMonth() !== date.getMonth()
                 && calendar.isMonthMode()) {
                 $el.css({
@@ -40,20 +36,23 @@ define([
             }
             //绘制选中
             let selectDate = calendar.getSelectDate();
-            if (date.getDate() === selectDate.getDate()
+            let isselectDay = date.getDate() === selectDate.getDate()
                 && date.getMonth() === selectDate.getMonth()
-                && date.getFullYear() === selectDate.getFullYear()
-                && date.getMonth() === calendar.getSeedDate().getMonth()) {
+                && date.getFullYear() === selectDate.getFullYear();
+            if (
+                (isselectDay && calendar.isMonthMode() && date.getMonth() === calendar.getSeedDate().getMonth())
+                ||
+                (!calendar.isMonthMode() && isselectDay)
+            ) {
                 calendar.getElementByDate(date).find(">span").addClass("select");
             }
 
             //绘制额外信息
             if (info) {
-                console.log(info);
                 let rs = info.filter(ele => {
                     return ele.date.getDate() === date.getDate() && ele.date.getMonth() === date.getMonth() && ele.date.getFullYear() === date.getFullYear();
                 });
-                if (rs && rs.length > 0) {
+                if (rs && rs.length > 0 && rs[0].date) {
                     let dots = "";
                     for (let i = 0; i < rs[0].cnt; i++) {
                         dots += `
@@ -107,8 +106,8 @@ define([
         .addOnWeekChangedListener(function (calendar, seedDate, lastSeedDate) {
             $("#title").html(seedDate.getFullYear() + "年" + (seedDate.getMonth() + 1) + "月");
         })
-        .onModeChangedListeners(function(isMonthMode){
-            
+        .addOnModeChangedListeners(function (isMonthMode) {
+
         });
     calendar.show();
 

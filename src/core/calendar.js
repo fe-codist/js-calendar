@@ -78,8 +78,13 @@ define(["jquery"], function ($, Calculator) {
         return this;
     }
 
+    Calendar.prototype.addOnModeChangedListeners = function (listener) {
+        this.onModeChangedListeners.push(listener);
+        return this;
+    }
+
     Calendar.prototype.show = function (monthMatrix) {
-        draw(this, this.elMatrix, monthMatrix || this.monthMatrix, this.onDrawItemListener);
+        draw(this, monthMatrix || this.monthMatrix, this.onDrawItemListener);
     }
 
     Calendar.prototype.getSeedDate = function () {
@@ -94,24 +99,55 @@ define(["jquery"], function ($, Calculator) {
         return this.params.mode === MODE_MONTH;
     }
 
-    Calendar.prototype.toggleMode = function () {
-        this.params.mode === MODE_WEEK ? this.monthMode() : this.weekMode();
+    Calendar.prototype.toggleMode = function (time = 1000, mode = undefined) {
+        if (!mode) {
+            this.params.mode === MODE_WEEK ? this.monthMode(time) : this.weekMode(time);
+        } else if (mode === MODE_WEEK) {
+            this.weekMode(time);
+        } else if (mode === MODE_MONTH) {
+            this.monthMode(time);
+        }
+
     }
 
-    Calendar.prototype.weekMode = function () {
+    Calendar.prototype.weekMode = function (time = 1000) {
         this.params.mode = MODE_WEEK;
         //logic
-
+        //折叠所有，展开0
+        this.draw();
+        let row = getRowByDate(this.monthMatrix, new Date(this.params.seedDate));
+        let selectRow = getRowByDate(this.monthMatrix, new Date(this.params.selectDate));
+        if (selectRow === -1) {
+            row = 0;
+        } else {
+            row = selectRow;
+        }
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
+        this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
+            listener(this.isMonthMode());
+        });
     }
 
-    Calendar.prototype.monthMode = function () {
+    Calendar.prototype.monthMode = function (time = 1000) {
         this.params.mode = MODE_MONTH;
         //logic
+        this.draw();
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
+        this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
+            listener(this.isMonthMode());
+        });
+
     }
 
     Calendar.prototype.nextMonth = function () {
         this.switchMonth(() => {
-            this.params.seedDate.setMonth(this.params.seedDate.getMonth() + 1);
+            // this.params.seedDate.setMonth(this.params.seedDate.getMonth() + 1);
+            if (this.params.seedDate.getMonth() == 11) {
+                this.params.seedDate = new Date(this.params.seedDate.getFullYear() + 1, 0, 1);
+            } else {
+                this.params.seedDate = new Date(this.params.seedDate.getFullYear(), this.params.seedDate.getMonth() + 1, 1);
+            }
         });
     }
 
@@ -122,24 +158,48 @@ define(["jquery"], function ($, Calculator) {
     }
 
     Calendar.prototype.switchMonth = function (calcuSeed) {
+        if (!this.isMonthMode()) {
+            return;
+        }
         //计算种子
         calcuSeed && calcuSeed();
         //计算矩阵
         this.calculate();
-        //绘制图形
-        this.draw();
         //回调监听
         this.onMonthChangedListeners.forEach(listener => {
             listener(this, new Date(this.params.seedDate));
         });
+        //绘制图形
+        this.draw();
+        this.logSeedDate();
     }
 
     Calendar.prototype.nextWeek = function () {
-
+        this.switchWeek(() => {
+            this.params.seedDate.setDate(this.params.seedDate.getDate() + 7);
+        });
     }
 
     Calendar.prototype.lastWeek = function () {
+        this.switchWeek(() => {
+            this.params.seedDate.setDate(this.params.seedDate.getDate() - 7);
+        });
+    }
 
+    Calendar.prototype.switchWeek = function (calcuSeed) {
+        if (this.isMonthMode()) {
+            return;
+        }
+        //计算种子
+        calcuSeed && calcuSeed();
+        //计算矩阵
+        this.calculate();
+        //回调监听
+        this.onWeekChangedListeners.forEach(listener => {
+            listener(this, new Date(this.params.seedDate));
+        });
+        //绘制图形
+        this.draw();
     }
 
     Calendar.prototype.getElementByDate = function (date) {
@@ -163,7 +223,26 @@ define(["jquery"], function ($, Calculator) {
     }
 
     Calendar.prototype.draw = function (monthMatrix) {
-        draw(this, this.elMatrix, monthMatrix || this.monthMatrix, this.onDrawItemListener);
+        draw(this, monthMatrix || this.monthMatrix, this.onDrawItemListener);
+    }
+
+    function getRowByDate(monthMatrix, date) {
+        let row = -1;
+        if (!date || !(date instanceof Date)) {
+            return row;
+        }
+        for (let i = 0; i < monthMatrix.length; i++) {
+            for (let j = 0; j < monthMatrix[i].length; j++) {
+                let item = monthMatrix[i][j];
+                if ((item.getDate() !== date.getDate()) || (item.getMonth() !== date.getMonth()) || (item.getFullYear() !== date.getFullYear())) {
+                    continue;
+                } else {
+                    row = i;
+                    break;
+                }
+            }
+        }
+        return row;
     }
 
     function calendarHtml(id) {
@@ -174,7 +253,7 @@ define(["jquery"], function ($, Calculator) {
                 row += `<span></span>`;
             }
             row = `
-                <div class=${CLASS_ROW}>
+                <div class=${CLASS_ROW} style="display:flex;">
                     ${row}
                 </div>
             `;
@@ -215,38 +294,36 @@ define(["jquery"], function ($, Calculator) {
                                 listener(calendar, new Date(date), new Date(calendar.params.selectDate));
                         });
                         calendar.params.selectDate = new Date(date);
+                        calendar.params.seedDate = new Date(date);
+                        calendar.calculate();
                         //重刷界面
-                        calendar.show();
+                        calendar.isMonthMode() && calendar.show();
                     }
                 });
             });
         });
     }
 
-    function draw(calendar, elMatrix, monthMatrix, onDrawItemListener) {
-        let opts = calendar.params;
-        let seedDate = opts.seedDate;
-        let isMonthMode = opts.mode === MODE_MONTH;
-        let outMonthShowable = opts.outMonthShowable;
-        elMatrix.forEach(($row, row) => {
+    function draw(calendar, monthMatrix, onDrawItemListener) {
+        calendar.elMatrix.forEach(($row, row) => {
             $row.forEach(($el, column) => {
                 let date = monthMatrix[row][column];
                 let isNeedDrawItem = (
                     (
-                        isMonthMode
+                        calendar.isMonthMode()
                         &&
                         (
-                            outMonthShowable
+                            calendar.params.outMonthShowable
                             ||
                             (
-                                date.getMonth() === seedDate.getMonth()
+                                date.getMonth() === calendar.params.seedDate.getMonth()
                                 &&
-                                date.getFullYear() === seedDate.getFullYear()
+                                date.getFullYear() === calendar.params.seedDate.getFullYear()
                             )
                         )
                     )
                     ||
-                    !isMonthMode
+                    !calendar.isMonthMode()
                 );
                 onDrawItemListener && onDrawItemListener(calendar, $el, date);
                 !isNeedDrawItem && $el.html("");//不需要显示的把内容置空，多这一步是为了drawItemListener把样式设置上
@@ -332,6 +409,11 @@ define(["jquery"], function ($, Calculator) {
         } else {
             return [];
         }
+    }
+
+    Calendar.prototype.logSeedDate = function () {
+        let date = this.params.seedDate;
+        console.log(date.getFullYear() + "年" + date.getMonth() + "月" + date.getDate());
     }
 
     // 计算 绘制 
