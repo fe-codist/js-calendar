@@ -7,6 +7,7 @@ define([
         id: "holder",
         outMonthClickable: false,
         outMonthShowable: true,
+        mode:"week"
     })
         .setDrawItemListener(function (calendar, $el, date) {
             //刷新
@@ -46,9 +47,8 @@ define([
             ) {
                 calendar.getElementByDate(date).find(">span").addClass("select");
             }
-
             //绘制额外信息
-            if (info) {
+            if (info && ((seed.getMonth() === date.getMonth() && calendar.isMonthMode())||(!calendar.isMonthMode()))) {
                 let rs = info.filter(ele => {
                     return ele.date.getDate() === date.getDate() && ele.date.getMonth() === date.getMonth() && ele.date.getFullYear() === date.getFullYear();
                 });
@@ -89,25 +89,19 @@ define([
         .addOnMonthChangedListener(function (calendar, seedDate) {
             info = [];
             $("#title").html(seedDate.getFullYear() + "年" + (seedDate.getMonth() + 1) + "月");
-            let start = new Date(seedDate.getFullYear(), seedDate.getMonth(), 1);
-            let end = new Date(seedDate.getFullYear(), (seedDate.getMonth() + 1), 1);
-            end.setDate(end.getDate() - 1);
-            requestRangeData(
-                start,
-                end
-            ).then(res => {
-                if (res.success && calendar.getSeedDate().getMonth() === start.getMonth()) {
-                    info = res.data;
-                    calendar.show();
-                }
-            });
 
+            reqRange(calendar,seedDate,function(res){
+                info = res.data;
+            });
         })
-        .addOnWeekChangedListener(function (calendar, seedDate, lastSeedDate) {
+        .addOnWeekChangedListener(function (calendar, seedDate) {
             $("#title").html(seedDate.getFullYear() + "年" + (seedDate.getMonth() + 1) + "月");
+            reqRange(calendar,seedDate,function(res){
+                info = res.data;
+            });
         })
         .addOnModeChangedListeners(function (isMonthMode) {
-
+            
         });
     calendar.show();
 
@@ -130,6 +124,21 @@ define([
     $("#lastWeek").on("click", function () {
         calendar.lastWeek();
     });
+
+    function reqRange(calendar,seedDate,callback) {
+        let start = new Date(seedDate.getFullYear(), seedDate.getMonth(), 1);
+        let end = new Date(seedDate.getFullYear(), (seedDate.getMonth() + 1), 1);
+        end.setDate(end.getDate() - 1);
+        requestRangeData(
+            start,
+            end
+        ).then(res => {
+            if (res.success && calendar.getSeedDate().getMonth() === start.getMonth()) {
+                callback && callback(res);
+                calendar.draw();
+            }
+        });
+    }
 
     function requestDay(date) {
         let res = {

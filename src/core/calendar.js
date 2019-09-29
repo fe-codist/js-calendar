@@ -85,6 +85,19 @@ define(["jquery"], function ($, Calculator) {
 
     Calendar.prototype.show = function (monthMatrix) {
         draw(this, monthMatrix || this.monthMatrix, this.onDrawItemListener);
+        //初始化模式
+        this.toggleMode(0, this.params.mode);
+        //默认点击一个选中日期
+        let $el = this.getElementByDate(this.params.selectDate);
+        this.params.selectDate && $el.trigger("click");
+        //默认调用月切换监听
+        this.isMonthMode() && this.onMonthChangedListeners.forEach(listener => {
+            listener(this, new Date(this.params.seedDate));
+        });
+        //默认周监听
+        !this.isMonthMode() && this.onWeekChangedListeners.forEach(listener => {
+            listener(this, new Date(this.params.seedDate));
+        });
     }
 
     Calendar.prototype.getSeedDate = function () {
@@ -110,30 +123,43 @@ define(["jquery"], function ($, Calculator) {
 
     }
 
-    Calendar.prototype.weekMode = function (time = 1000) {
+    Calendar.prototype.weekMode = function (time = 1000, seedDate = undefined) {
         this.params.mode = MODE_WEEK;
         //logic
         //折叠所有，展开0
-        this.draw();
-        let row = getRowByDate(this.monthMatrix, new Date(this.params.seedDate));
-        let selectRow = getRowByDate(this.monthMatrix, new Date(this.params.selectDate));
-        if (selectRow === -1) {
-            row = 0;
-        } else {
-            row = selectRow;
+        if (seedDate) {//当指定日期为种子日期，则重新计算
+            this.params.seedDate = new Date(seedDate);
+            this.calculate();
         }
-        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
+        let row = getRowByDate(this.monthMatrix, new Date(this.params.seedDate));
+        if (row === -1) {
+            row = 0;
+        }
+        this.draw();
+        seedDate &&　$(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
+        this.onWeekChangedListeners.forEach(listener => {
+            listener(this, new Date(this.params.seedDate))
+        });
         this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
             listener(this.isMonthMode());
         });
+
     }
 
     Calendar.prototype.monthMode = function (time = 1000) {
         this.params.mode = MODE_MONTH;
         //logic
+        //如果selectDate和seedDate在行
+        if (getRowByDate(this.monthMatrix, new Date(this.params.seedDate)) === getRowByDate(this.monthMatrix, new Date(this.params.selectDate))) {
+            this.params.seedDate = new Date(this.params.selectDate);
+            this.calculate();
+        }
         this.draw();
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
+        this.onMonthChangedListeners.forEach(listener => {
+            listener(this, new Date(this.params.seedDate))
+        });
         this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
             listener(this.isMonthMode());
         });
@@ -142,19 +168,31 @@ define(["jquery"], function ($, Calculator) {
 
     Calendar.prototype.nextMonth = function () {
         this.switchMonth(() => {
-            // this.params.seedDate.setMonth(this.params.seedDate.getMonth() + 1);
             if (this.params.seedDate.getMonth() == 11) {
                 this.params.seedDate = new Date(this.params.seedDate.getFullYear() + 1, 0, 1);
             } else {
                 this.params.seedDate = new Date(this.params.seedDate.getFullYear(), this.params.seedDate.getMonth() + 1, 1);
             }
+            ifSameYearMonthSetSeed(this);
         });
     }
 
     Calendar.prototype.lastMonth = function () {
         this.switchMonth(() => {
-            this.params.seedDate.setMonth(this.params.seedDate.getMonth() - 1);
+            if (this.params.seedDate.getMonth() == 0) {
+                this.params.seedDate = new Date(this.params.seedDate.getFullYear() - 1, 11, 1);
+            } else {
+                this.params.seedDate = new Date(this.params.seedDate.getFullYear(), this.params.seedDate.getMonth() - 1, 1);
+            }
+            ifSameYearMonthSetSeed(this);
         });
+    }
+
+    function ifSameYearMonthSetSeed(calendar) {
+        if (calendar.params.seedDate.getMonth() === calendar.params.selectDate.getMonth()
+            && calendar.params.seedDate.getFullYear() === calendar.params.selectDate.getFullYear()) {
+            calendar.params.seedDate = new Date(calendar.params.selectDate);
+        }
     }
 
     Calendar.prototype.switchMonth = function (calcuSeed) {
@@ -171,7 +209,6 @@ define(["jquery"], function ($, Calculator) {
         });
         //绘制图形
         this.draw();
-        this.logSeedDate();
     }
 
     Calendar.prototype.nextWeek = function () {
@@ -200,6 +237,12 @@ define(["jquery"], function ($, Calculator) {
         });
         //绘制图形
         this.draw();
+        let row = getRowByDate(this.monthMatrix, this.params.seedDate);
+        if (row === -1) {
+            row = 0;
+        }
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(0);
+        $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(0);
     }
 
     Calendar.prototype.getElementByDate = function (date) {
@@ -291,13 +334,22 @@ define(["jquery"], function ($, Calculator) {
                     if (isCanClick && listeners) {
                         listeners.forEach(listener => {
                             listener &&
-                                listener(calendar, new Date(date), new Date(calendar.params.selectDate));
+                                listener(calendar, new Date(date));
                         });
-                        calendar.params.selectDate = new Date(date);
-                        calendar.params.seedDate = new Date(date);
-                        calendar.calculate();
+
                         //重刷界面
-                        calendar.isMonthMode() && calendar.show();
+                        if (calendar.isMonthMode()) {
+                            calendar.params.selectDate = new Date(date);
+                            calendar.params.seedDate = new Date(date);
+                            calendar.calculate();
+                            // calendar.draw();
+                            calendar.monthMode();
+                        } else {
+                            calendar.params.selectDate = new Date(date);
+                            calendar.params.seedDate = new Date(date);
+                            // calendar.draw();
+                            calendar.weekMode(0, new Date(date));
+                        }
                     }
                 });
             });
