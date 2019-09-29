@@ -2,15 +2,22 @@
 自定义日历
 
 # 使用方法
+//非本月日期是否可点击
+//非本月日期是否可显示
+//默认模式
+//是否显示weekbar
+//weekbar样式
+//周一到周日名称
+//设置哪一天作为开始(0-6对应周一到周日，默认周日)
 let calendar = new Calendar({
         id: "holder",
-        outMonthClickable: false,//非本月日期是否可点击
-        outMonthShowable: true,//非本月日期是否可显示
-        mode: "week",//默认模式
-        showWeekbar: true,//是否显示weekbar
-        weekbarCss: {},//weekbar样式
-        mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],//周一到周日名称
-        firstOfWeekIndex: 6,//设置哪一天作为开始(0-6对应周一到周日，默认周日)
+        outMonthClickable: false,
+        outMonthShowable: true,
+        mode: "week",
+        showWeekbar: true,
+        weekbarCss: {},
+        mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+        firstOfWeekIndex: 6
     })
     .setDrawItemListener(calendar, date){//如何绘制每个item
 
