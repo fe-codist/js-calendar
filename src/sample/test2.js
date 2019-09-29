@@ -101,7 +101,7 @@ define([
             });
         })
         .addOnModeChangedListeners(function (isMonthMode) {
-
+            alert(isMonthMode);
         });
     calendar.show();
 
