@@ -1,6 +1,7 @@
 define(["jquery"], function ($, Calculator) {
     const UUID = 1;
     const ID_CALENDAR = "calendar_" + UUID;
+    const ID_WEEK_BAR = "weekbar_" + UUID;
     const CLASS_ROW = "row-" + UUID;
     const MODE_MONTH = "month";
     const MODE_WEEK = "week";
@@ -13,6 +14,8 @@ define(["jquery"], function ($, Calculator) {
             mode: MODE_MONTH,
             outMonthClickable: false,
             outMonthShowable: true,
+            showWeekbar: true,
+            weekbarCss: {},
             mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
             firstOfWeek: "",
             firstOfWeekIndex: 6,
@@ -41,6 +44,16 @@ define(["jquery"], function ($, Calculator) {
         this.calculate()
         //初始化elhtml
         calendarHtml(this.params.id);
+        this.params.weekbarCss && Object.assign(this.params.weekbarCss, {
+            "flex": "1",
+            "text-align": "center",
+        });
+        this.params.showWeekbar && $(`#${ID_WEEK_BAR}`).find(`span`).each((index, item) => {
+
+            $(item).html(`
+                <span style="display:inline-block;">${this.params.mondayToSunday[getWeekday(index, this.params.firstOfWeekIndex)]}</span>
+            `).css(this.params.weekbarCss);
+        });
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).each((row, $row) => {
             let rows = [];
             $($row).find(">span").each((column, $el) => {
@@ -136,7 +149,7 @@ define(["jquery"], function ($, Calculator) {
             row = 0;
         }
         this.draw();
-        seedDate &&　$(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
+        seedDate && $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
         this.onWeekChangedListeners.forEach(listener => {
             listener(this, new Date(this.params.seedDate))
@@ -269,6 +282,12 @@ define(["jquery"], function ($, Calculator) {
         draw(this, monthMatrix || this.monthMatrix, this.onDrawItemListener);
     }
 
+    Calendar.prototype.getWeeks = function () {
+        return Array.from(new Array(7)).map((ele, index) => {
+            return this.params.mondayToSunday[getWeekday(index, this.params.firstOfWeekIndex)];
+        });
+    }
+
     function getRowByDate(monthMatrix, date) {
         let row = -1;
         if (!date || !(date instanceof Date)) {
@@ -289,7 +308,16 @@ define(["jquery"], function ($, Calculator) {
     }
 
     function calendarHtml(id) {
-        let calendar = "";
+        let weekbar = "";
+        for (let i = 0; i < 7; i++) {
+            weekbar += `<span></span>`;
+        }
+        weekbar = `
+            <div id=${ID_WEEK_BAR}  style="display:flex;">
+                ${weekbar}
+            </div>
+        `;
+        let body = "";
         for (let i = 0; i < 6; i++) {
             let row = "";
             for (let j = 0; j < 7; j++) {
@@ -300,14 +328,16 @@ define(["jquery"], function ($, Calculator) {
                     ${row}
                 </div>
             `;
-            calendar += row;
+            body += row;
         }
-        calendar = `
-            <div id=${ID_CALENDAR}>
-                ${calendar}
+        $(`#${id}`).html(`
+            <div >
+                ${weekbar}
+                <div id=${ID_CALENDAR}>
+                    ${body}
+                </div>
             </div>
-        `;
-        $(`#${id}`).html(calendar);
+        `);
     }
 
     function addClickListener(calendar, listeners) {
