@@ -66,7 +66,6 @@ define([
             }
         })
         .addOnDateSelectedListener(function (calendar, date) {
-            console.log(calendar.getWeeks());
             $("#title").html(date.getFullYear() + "年" + (date.getMonth() + 1) + "月");
             requestDay(date).then(res => {
                 if (date.getFullYear() === calendar.params.selectDate.getFullYear()
@@ -99,7 +98,6 @@ define([
             $("#title").html(seedDate.getFullYear() + "年" + (seedDate.getMonth() + 1) + "月");
             reqRange(calendar, seedDate, function (res) {
                 info = res.data;
-                console.log(info);
             });
         })
         .addOnModeChangedListeners(function (isMonthMode) {

@@ -1,5 +1,6 @@
 define(["jquery", "./calculator"], function ($, Calculator) {
-    const uuid = 1;
+    const uuid = genUUID();
+    alert(1);
     const ID_CALENDAR = "calendar_body_" + uuid;
     const CLASS_ROW = "row-" + uuid;
 
@@ -300,6 +301,10 @@ define(["jquery", "./calculator"], function ($, Calculator) {
         calendar.onWeekChangedListeners && calendar.onWeekChangedListeners.forEach(listener => {
             listener(calendar, new Date(calendar.calculator.getSeedDate()), lastSeed);
         });
+    }
+
+    function genUUID(randomLength = 5){
+        return Number(Math.random().toString().substr(3,randomLength) + Date.now()).toString(36)
     }
 
     Calendar.prototype.show = function (monthMatrix = undefined) {

@@ -1,5 +1,5 @@
 define(["jquery"], function ($, Calculator) {
-    const UUID = 1;
+    const UUID = genUUID();
     const ID_CALENDAR = "calendar_" + UUID;
     const ID_WEEK_BAR = "weekbar_" + UUID;
     const CLASS_ROW = "row-" + UUID;
@@ -491,6 +491,10 @@ define(["jquery"], function ($, Calculator) {
         } else {
             return [];
         }
+    }
+
+    function genUUID(randomLength = 5){
+        return Number(Math.random().toString().substr(3,randomLength) + Date.now()).toString(36)
     }
 
     return Calendar;
