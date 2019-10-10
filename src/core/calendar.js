@@ -154,9 +154,11 @@ define(["jquery"], function ($, Calculator) {
         this.onWeekChangedListeners.forEach(listener => {
             listener(this, new Date(this.params.seedDate))
         });
-        this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
-            listener(this.isMonthMode());
-        });
+        setTimeout(() => {
+            this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
+                listener(this.isMonthMode());
+            });
+        }, time);
 
     }
 
@@ -173,9 +175,11 @@ define(["jquery"], function ($, Calculator) {
         this.onMonthChangedListeners.forEach(listener => {
             listener(this, new Date(this.params.seedDate))
         });
-        this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
-            listener(this.isMonthMode());
-        });
+        setTimeout(() => {
+            this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
+                listener(this.isMonthMode());
+            });
+        }, time);
 
     }
 
@@ -493,8 +497,8 @@ define(["jquery"], function ($, Calculator) {
         }
     }
 
-    function genUUID(randomLength = 5){
-        return Number(Math.random().toString().substr(3,randomLength) + Date.now()).toString(36)
+    function genUUID(randomLength = 5) {
+        return Number(Math.random().toString().substr(3, randomLength) + Date.now()).toString(36)
     }
 
     return Calendar;
