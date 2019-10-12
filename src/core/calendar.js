@@ -15,7 +15,7 @@ define(["jquery"], function ($, Calculator) {
             outMonthClickable: false,
             outMonthShowable: true,
             showWeekbar: true,
-            weekbarCss: {},
+            weekbarCss: { color: '#666666' },
             mondayToSunday: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
             firstOfWeek: "",
             firstOfWeekIndex: 6,
@@ -108,8 +108,9 @@ define(["jquery"], function ($, Calculator) {
             listener(this, new Date(this.params.seedDate));
         });
         //默认周监听
+        let weeks  = calcWeekMatrix(this.params.seedDate,this.monthMatrix);
         !this.isMonthMode() && this.onWeekChangedListeners.forEach(listener => {
-            listener(this, new Date(this.params.seedDate));
+            listener(this, weeks);
         });
     }
 
@@ -151,15 +152,15 @@ define(["jquery"], function ($, Calculator) {
         this.draw();
         seedDate && $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).slideDown(time);
         $(`#${ID_CALENDAR}`).find(`.${CLASS_ROW}`).not(`:nth(${row})`).slideUp(time);
+        let weeks  = calcWeekMatrix(this.params.seedDate,this.monthMatrix);
         this.onWeekChangedListeners.forEach(listener => {
-            listener(this, new Date(this.params.seedDate))
+            listener(this, weeks);
         });
         setTimeout(() => {
             this.onModeChangedListeners && this.onModeChangedListeners.forEach(listener => {
                 listener(this.isMonthMode());
             });
         }, time);
-
     }
 
     Calendar.prototype.monthMode = function (time = 1000) {
@@ -203,6 +204,22 @@ define(["jquery"], function ($, Calculator) {
             }
             ifSameYearMonthSetSeed(this);
         });
+    }
+
+    Calendar.prototype.next = function(){
+        if (this.isMonthMode()) {
+            this.nextMonth();
+        } else {
+            this.nextWeek();
+        }
+    }
+
+    Calendar.prototype.last = function(){
+        if (this.isMonthMode()) {
+            this.lastMonth();
+        } else {
+            this.lastWeek();
+        }
     }
 
     function ifSameYearMonthSetSeed(calendar) {
@@ -249,8 +266,9 @@ define(["jquery"], function ($, Calculator) {
         //计算矩阵
         this.calculate();
         //回调监听
+        let weeks  = calcWeekMatrix(this.params.seedDate,this.monthMatrix);
         this.onWeekChangedListeners.forEach(listener => {
-            listener(this, new Date(this.params.seedDate));
+            listener(this, weeks);
         });
         //绘制图形
         this.draw();

@@ -94,9 +94,9 @@ define([
                 info = res.data;
             });
         })
-        .addOnWeekChangedListener(function (calendar, seedDate) {
-            $("#title").html(seedDate.getFullYear() + "年" + (seedDate.getMonth() + 1) + "月");
-            reqRange(calendar, seedDate, function (res) {
+        .addOnWeekChangedListener(function (calendar, weeks) {
+            $("#title").html(weeks[6].getFullYear() + "年" + (weeks[6].getMonth() + 1) + "月");
+            reqRange(calendar, calendar.getSeedDate(), function (res) {
                 info = res.data;
             });
         })
