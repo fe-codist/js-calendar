@@ -1,4 +1,10 @@
 define(["jquery"], function ($, Calculator) {
+    //防止低版本浏览器不支持flat方法
+    if(!Array.prototype.flat){
+        Array.prototype.flat = function(){
+            return [].concat(...this);
+        }
+    }
     const UUID = genUUID();
     const ID_CALENDAR = "calendar_" + UUID;
     const ID_WEEK_BAR = "weekbar_" + UUID;
